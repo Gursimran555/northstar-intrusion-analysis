@@ -1,0 +1,21 @@
+// First version. Kept for comparison; see ../q1_signin_to_encoded_powershell.kql
+let huntStart = datetime(2026-10-06);
+let huntEnd = datetime(2026-10-08);
+let baseline = SigninLogs
+| where TimeGenerated between ((huntStart - 14d) .. huntStart) and ResultType == "0"
+| summarize KnownIPs = make_set(IPAddress) by UserPrincipalName;
+let newIpSignins = SigninLogs
+| where TimeGenerated between (huntStart .. huntEnd) and ResultType == "0"
+| join kind=inner baseline on UserPrincipalName
+| where not(set_has_element(KnownIPs, IPAddress))
+| extend AccountName = tolower(tostring(split(UserPrincipalName, "@")[0]))
+| project SigninTime = TimeGenerated, UserPrincipalName, AccountName, IPAddress, Location;
+let encodedPs = SecurityEvent
+| where TimeGenerated between (huntStart .. huntEnd) and EventID == 4688
+| where NewProcessName endswith "powershell.exe"
+| where CommandLine matches regex @"(?i)\s-(e|enc|encodedcommand)\s"
+| project PsTime = TimeGenerated, Computer, AccountName = tolower(SubjectUserName), CommandLine;
+newIpSignins
+| join kind=inner encodedPs on AccountName
+| where PsTime between (SigninTime .. (SigninTime + 2h))
+| extend MinutesAfterSignin = datetime_diff('minute', PsTime, SigninTime)

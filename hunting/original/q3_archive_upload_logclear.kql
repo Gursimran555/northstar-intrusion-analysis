@@ -1,0 +1,18 @@
+// First version. Kept for comparison; see ../q3_archive_upload_logclear.kql
+let huntStart = datetime(2026-10-06);
+let huntEnd = datetime(2026-10-08);
+let archives = DeviceFileEvents
+| where TimeGenerated between (huntStart .. huntEnd) and ActionType == "FileCreated"
+| where FileName matches regex @"(?i)\.(zip|7z|rar)$" and FolderPath contains @"\Temp\"
+| summarize ArchiveCount = count(), Archives = make_set(FileName), FirstArchive = min(TimeGenerated) by DeviceName;
+let uploads = CommonSecurityLog
+| where TimeGenerated between (huntStart .. huntEnd) and DestinationPort == 443
+| summarize SentGB = round(sum(SentBytes) / 1e9, 2), FirstUpload = min(TimeGenerated), Destinations = make_set(DestinationHostName) by DeviceName = SourceHostName
+| where SentGB > 0.5;
+let logCleared = SecurityEvent
+| where TimeGenerated between (huntStart .. huntEnd) and EventID == 1102
+| project LogClearedTime = TimeGenerated, DeviceName = Computer;
+archives
+| join kind=inner uploads on DeviceName
+| where FirstUpload > FirstArchive
+| join kind=leftouter logCleared on DeviceName

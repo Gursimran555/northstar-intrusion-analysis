@@ -1,0 +1,15 @@
+// First version. Kept for comparison; see ../q2_lsass_then_rdp.kql
+let huntStart = datetime(2026-10-06);
+let huntEnd = datetime(2026-10-08);
+let credAlerts = SecurityAlert
+| where TimeGenerated between (huntStart .. huntEnd)
+| where AlertName has "LSASS" or Techniques has "T1003"
+| project AlertTime = TimeGenerated, SourceHost = CompromisedEntity, AlertName;
+let rdpLogons = SecurityEvent
+| where TimeGenerated between (huntStart .. huntEnd)
+| where EventID in (4624, 4625) and LogonType == 10
+| project LogonTime = TimeGenerated, SourceHost = WorkstationName, TargetHost = Computer, TargetUserName, Result = iff(EventID == 4624, "Success", "Failure");
+credAlerts
+| join kind=inner rdpLogons on SourceHost
+| where LogonTime between (AlertTime .. (AlertTime + 24h))
+| summarize FirstRDP = min(LogonTime), Attempts = count(), Successes = countif(Result == "Success"), Targets = make_set(TargetHost), AccountsUsed = make_set(TargetUserName) by SourceHost, AlertName, AlertTime
