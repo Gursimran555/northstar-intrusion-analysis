@@ -1,0 +1,11 @@
+{
+  "_note": "Subset of each Microsoft Sentinel / Defender table's columns, enough to type-check the hunts. Column names and types follow the Azure Monitor Logs table reference.",
+  "SigninLogs": "(TimeGenerated:datetime, UserPrincipalName:string, UserId:string, IPAddress:string, Location:string, ResultType:string, AppDisplayName:string, AuthenticationRequirement:string)",
+  "SecurityEvent": "(TimeGenerated:datetime, Computer:string, EventID:int, Activity:string, Account:string, SubjectUserName:string, SubjectUserSid:string, TargetUserName:string, LogonType:int, WorkstationName:string, IpAddress:string, NewProcessName:string, CommandLine:string, ParentProcessName:string)",
+  "SecurityAlert": "(TimeGenerated:datetime, AlertName:string, AlertSeverity:string, CompromisedEntity:string, Techniques:string, Entities:string, ProviderName:string)",
+  "DeviceFileEvents": "(TimeGenerated:datetime, DeviceName:string, ActionType:string, FileName:string, FolderPath:string, InitiatingProcessFileName:string, InitiatingProcessAccountName:string)",
+  "DeviceNetworkInfo": "(TimeGenerated:datetime, DeviceName:string, IPAddresses:dynamic, MacAddress:string)",
+  "CommonSecurityLog": "(TimeGenerated:datetime, DeviceVendor:string, DeviceName:string, SourceHostName:string, SourceIP:string, DestinationHostName:string, DestinationIP:string, DestinationPort:int, SentBytes:long, ReceivedBytes:long, RequestURL:string, DeviceAction:string)",
+  "Event": "(TimeGenerated:datetime, Computer:string, EventLog:string, EventID:int, Source:string, RenderedDescription:string)",
+  "IdentityInfo": "(TimeGenerated:datetime, AccountUPN:string, AccountSID:string, AccountName:string, AccountObjectId:string)"
+}
