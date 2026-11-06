@@ -1,0 +1,11 @@
+{
+  "name": "northstar-intrusion-analysis",
+  "private": true,
+  "description": "KQL syntax and schema check for the hunting queries",
+  "scripts": {
+    "kql": "node tools/kql_check.js hunting/*.kql hunting/original/*.kql"
+  },
+  "devDependencies": {
+    "@kusto/language-service-next": "11.5.0"
+  }
+}
