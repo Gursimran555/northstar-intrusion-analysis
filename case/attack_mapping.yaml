@@ -1,0 +1,16 @@
+# Observed behaviour -> ATT&CK Enterprise. Checked against v20 by tools/check_attack.py.
+attack_version: "20.0"
+mapping:
+  - {observation: "Fake M365 \"session expired\" email with a sign-in link", tactic: initial-access, id: T1566.002, name: Spearphishing Link}
+  - {observation: "M365 sign-in from a new IP with the phished password", tactic: initial-access, id: T1078.004, name: Cloud Accounts}
+  - {observation: "PowerShell on the workstation", tactic: execution, id: T1059.001, name: PowerShell}
+  - {observation: "-enc / Base64 command line", tactic: stealth, id: T1027.010, name: Command Obfuscation}
+  - {observation: "PowerShell connecting out to an external domain", tactic: command-and-control, id: T1071.001, name: Web Protocols}
+  - {observation: "Scheduled task running PowerShell at user logon", tactic: persistence, id: T1053.005, name: Scheduled Task}
+  - {observation: "Suspicious access to LSASS", tactic: credential-access, id: T1003.001, name: LSASS Memory}
+  - {observation: "RDP from the workstation to the research server", tactic: lateral-movement, id: T1021.001, name: Remote Desktop Protocol}
+  - {observation: "RDP as it.admin2, likely taken from LSASS", tactic: persistence, id: T1078.002, name: Domain Accounts}
+  - {observation: "Research folders compressed to ZIP", tactic: collection, id: T1560.001, name: Archive via Utility}
+  - {observation: "ZIPs placed in a temp folder before transfer", tactic: collection, id: T1074.001, name: Local Data Staging}
+  - {observation: "2.3 GB over HTTPS to a cloud file-sharing service", tactic: exfiltration, id: T1567.002, name: Exfiltration to Cloud Storage}
+  - {observation: "Windows Security log cleared", tactic: defense-impairment, id: T1685.005, name: Clear Windows Event Logs}

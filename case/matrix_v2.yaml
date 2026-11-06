@@ -1,0 +1,51 @@
+# ACH matrix re-rated against H2 as it is actually stated: an insider who
+# disguises the theft as an external attack. Evidence that such a disguise
+# would produce on purpose can't count against it.
+title: NorthStar intrusion - ACH, re-rated
+hypotheses:
+  H1: Coordinated external intrusion
+  H2: Insider who stole the data and disguised it as an external attack
+  H3: Unrelated events in the same 48 hours
+evidence:
+  - {id: E1, text: Phishing email to a senior researcher, credibility: high, ratings: {H1: C, H2: N, H3: C}}
+  - id: E2
+    text: Sign-in from a never-seen IP shortly after the email
+    credibility: high
+    ratings: {H1: C, H2: C, H3: N}
+    note: a VPN sign-in is exactly what a disguise would produce
+  - {id: E3, text: Encoded PowerShell 90 min later contacting an external domain, credibility: high, ratings: {H1: C, H2: N, H3: N}}
+  - {id: E4, text: Scheduled task running PowerShell at logon, credibility: high, ratings: {H1: C, H2: N, H3: N}}
+  - id: E5
+    text: LSASS credential dumping alert on the same workstation
+    credibility: high
+    ratings: {H1: C, H2: N, H3: N}
+    note: staging an "attack" or getting admin rights both fit an insider, until E16 is known
+  - {id: E6, text: RDP from that workstation as it.admin2, one success to the research server, credibility: high, ratings: {H1: C, H2: N, H3: I}}
+  - {id: E7, text: Research data zipped on the server reached by RDP, credibility: high, ratings: {H1: C, H2: C, H3: I}}
+  - {id: E8, text: 2.3 GB upload from that server to cloud storage, credibility: high, ratings: {H1: C, H2: C, H3: I}}
+  - {id: E9, text: Security log cleared right after, credibility: high, ratings: {H1: C, H2: C, H3: I}}
+  - id: E10
+    text: "Commercial feed: domain seen in malware campaigns (B2)"
+    credibility: medium
+    ratings: {H1: C, H2: I, H3: I}
+    note: an insider would need access to criminal infrastructure; vendor claim, not yet verified
+  - {id: E11, text: "Government advisory: same sequence seen at other healthcare organisations (A2)", credibility: high, ratings: {H1: C, H2: N, H3: I}}
+  - id: E12
+    text: "OSINT blog: domain allegedly linked to an Eastern European group (C4)"
+    credibility: low
+    ratings: {H1: C, H2: I, H3: N}
+    note: rated at low weight instead of left out, so its effect is visible
+  - id: E13
+    text: "Anonymous social media breach claim (F6)"
+    credibility: none
+    ratings: {H1: N, H2: N, H3: N}
+    note: cannot be judged; zero weight
+  - id: E14
+    text: Events follow the attack lifecycle in order within 48 hours
+    credibility: high
+    ratings: {H1: C, H2: C, H3: I}
+    note: a disguise would copy the lifecycle
+  - {id: E15, text: Who owns the receiving cloud account, credibility: high, ratings: {H1: "?", H2: "?", H3: "?"}, note: "ask the provider to preserve and identify it"}
+  - {id: E16, text: Whether the researcher could already open the data on the research server, credibility: high, ratings: {H1: "?", H2: "?", H3: "?"}, note: "if yes, stealing admin credentials makes little sense for an insider"}
+  - {id: E17, text: How MFA was satisfied for the new-IP sign-in, credibility: high, ratings: {H1: "?", H2: "?", H3: "?"}, note: "push approved on the researcher's own phone points one way, token theft the other"}
+  - {id: E18, text: Whether the C2 domain and upload site match the government advisory's indicators, credibility: high, ratings: {H1: "?", H2: "?", H3: "?"}, note: "a match would be hard for an insider to arrange"}
