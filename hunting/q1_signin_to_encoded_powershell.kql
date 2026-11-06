@@ -1,0 +1,35 @@
+// Hunt 1: a sign-in from an IP the user hasn't used in the last 14 days,
+// followed within 2 hours by encoded PowerShell under the same account.
+// ATT&CK: T1078.004, T1059.001, T1027.010
+let huntStart = datetime(2026-10-06);
+let huntEnd = datetime(2026-10-08);
+let lookback = 14d;
+// PowerShell accepts any prefix of -EncodedCommand (-e, -en, -enc, -enco ...)
+// plus -ec, after -, --, /, or an en dash, em dash or horizontal bar
+// (CommandLineParameterParser.cs in PowerShell's source). -Encoding is not matched.
+let encodedFlag = @"(?i)\s[-/\x{2013}\x{2014}\x{2015}]{1,2}e(c|n(c(o(d(e(d(c(o(m(m(a(n(d)?)?)?)?)?)?)?)?)?)?)?)?)?\s";
+let baseline = SigninLogs
+| where TimeGenerated between ((huntStart - lookback) .. huntStart) and ResultType == "0"
+| summarize KnownIPs = make_set(IPAddress) by UserPrincipalName = tolower(UserPrincipalName);
+let newIpSignins = SigninLogs
+| where TimeGenerated between (huntStart .. huntEnd) and ResultType == "0"
+| extend UserPrincipalName = tolower(UserPrincipalName)
+// leftouter, not inner: a user with no sign-in in the lookback window (a new
+// starter, someone back from leave) has no baseline row and would vanish.
+| join kind=leftouter baseline on UserPrincipalName
+| extend NoBaseline = isnull(KnownIPs)
+| where NoBaseline or not(set_has_element(KnownIPs, IPAddress))
+// Assumes the UPN prefix equals the on-prem account name. If it doesn't,
+// map accounts through IdentityInfo (AccountUPN -> AccountSID) instead.
+| extend AccountName = tostring(split(UserPrincipalName, "@")[0])
+| project SigninTime = TimeGenerated, UserPrincipalName, AccountName, IPAddress, Location, NoBaseline;
+let encodedPs = SecurityEvent
+| where TimeGenerated between (huntStart .. huntEnd) and EventID == 4688
+| where NewProcessName endswith @"\powershell.exe" or NewProcessName endswith @"\pwsh.exe"
+| where CommandLine matches regex encodedFlag
+| project PsTime = TimeGenerated, Computer, AccountName = tolower(SubjectUserName), CommandLine;
+newIpSignins
+| join kind=inner encodedPs on AccountName
+| where PsTime between (SigninTime .. (SigninTime + 2h))
+| extend MinutesAfterSignin = datetime_diff('minute', PsTime, SigninTime)
+| project SigninTime, UserPrincipalName, IPAddress, Location, NoBaseline, Computer, PsTime, MinutesAfterSignin, CommandLine

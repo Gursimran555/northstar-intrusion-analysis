@@ -1,0 +1,27 @@
+// Hunt 2: remote logons from a host within 24 hours of an LSASS / credential
+// dumping alert on that host. ATT&CK: T1003.001, T1021.001, T1078.002
+let huntStart = datetime(2026-10-06);
+let huntEnd = datetime(2026-10-08);
+// Hostnames arrive in different shapes: FQDN in one table, NetBIOS name in
+// another, different case. Compare on the short upper-case name.
+let shortHost = (h: string) { toupper(tostring(split(h, ".")[0])) };
+let credAlerts = SecurityAlert
+| where TimeGenerated between (huntStart .. huntEnd)
+| where AlertName has "LSASS" or Techniques has "T1003"
+| project AlertTime = TimeGenerated, SourceHost = shortHost(CompromisedEntity), AlertName;
+let rdpLogons = SecurityEvent
+| where TimeGenerated between (huntStart .. huntEnd)
+// A successful RDP session is 4624 type 10. With Network Level Authentication
+// (the default) a failed attempt is rejected before any session exists and is
+// logged as 4625 type 3, so filtering on type 10 alone hides the failures.
+// Type 3 also covers SMB and other network logons: read failures as
+// "remote logon failures from this host", not strictly RDP.
+| where (EventID == 4624 and LogonType == 10) or (EventID == 4625 and LogonType in (3, 10))
+| project LogonTime = TimeGenerated, SourceHost = shortHost(WorkstationName), SourceIp = IpAddress,
+          TargetHost = shortHost(Computer), TargetUserName, Result = iff(EventID == 4624, "Success", "Failure");
+credAlerts
+| join kind=inner rdpLogons on SourceHost
+| where LogonTime between (AlertTime .. (AlertTime + 24h))
+| summarize FirstLogon = min(LogonTime), Attempts = count(), Successes = countif(Result == "Success"),
+            Targets = make_set(TargetHost), AccountsUsed = make_set(TargetUserName), SourceIps = make_set(SourceIp)
+    by SourceHost, AlertName, AlertTime

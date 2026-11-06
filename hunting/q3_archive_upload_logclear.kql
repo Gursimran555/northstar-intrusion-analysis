@@ -1,0 +1,43 @@
+// Hunt 3: archives created in a temp folder, then more than 0.5 GB sent out
+// over 443 from the same host, with any log clearing on that host.
+// ATT&CK: T1560.001, T1074.001, T1567.002, T1685.005
+let huntStart = datetime(2026-10-06);
+let huntEnd = datetime(2026-10-08);
+let shortHost = (h: string) { toupper(tostring(split(h, ".")[0])) };
+let archives = DeviceFileEvents
+| where TimeGenerated between (huntStart .. huntEnd) and ActionType == "FileCreated"
+| where FileName matches regex @"(?i)\.(zip|7z|rar)$" and FolderPath contains @"\Temp\"
+| summarize ArchiveCount = count(), Archives = make_set(FileName), FirstArchive = min(TimeGenerated)
+    by DeviceName = shortHost(DeviceName);
+// Firewalls and proxies often log the source IP with no hostname. Map IPs to
+// devices from endpoint data first; use SourceHostName only as a fallback.
+let ipToHost = DeviceNetworkInfo
+| where TimeGenerated between ((huntStart - 1d) .. huntEnd)
+| mv-expand Addr = IPAddresses
+| extend IP = tostring(Addr.IPAddress)
+| where isnotempty(IP)
+| summarize by IP, HostFromIp = shortHost(DeviceName);
+let uploads = CommonSecurityLog
+| where TimeGenerated between (huntStart .. huntEnd) and DestinationPort == 443
+| join kind=leftouter ipToHost on $left.SourceIP == $right.IP
+| extend SrcHost = iff(isnotempty(HostFromIp), HostFromIp, shortHost(SourceHostName))
+| where isnotempty(SrcHost)
+| summarize SentGB = round(sum(SentBytes) / 1e9, 2), FirstUpload = min(TimeGenerated),
+            Destinations = make_set(DestinationHostName)
+    by DeviceName = SrcHost
+| where SentGB > 0.5;
+// 1102 = Security log cleared. System log 104 = any other log cleared
+// (System, Application, Sysmon ...), which 1102 doesn't cover.
+let logCleared = union
+    (SecurityEvent
+     | where TimeGenerated between (huntStart .. huntEnd) and EventID == 1102
+     | project ClearedTime = TimeGenerated, DeviceName = shortHost(Computer), Log = "Security"),
+    (Event
+     | where TimeGenerated between (huntStart .. huntEnd) and EventLog == "System" and EventID == 104
+     | project ClearedTime = TimeGenerated, DeviceName = shortHost(Computer), Log = "other (System 104)")
+| summarize LogsCleared = make_set(Log), FirstClear = min(ClearedTime) by DeviceName;
+archives
+| join kind=inner uploads on DeviceName
+| where FirstUpload > FirstArchive
+| join kind=leftouter logCleared on DeviceName
+| project DeviceName, ArchiveCount, Archives, FirstArchive, FirstUpload, SentGB, Destinations, LogsCleared, FirstClear
